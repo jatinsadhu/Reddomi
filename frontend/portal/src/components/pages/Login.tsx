@@ -5,6 +5,7 @@ import { buildAppUrl } from "@/app/routes";
 import { IntegrationType, JWT } from "@doota/pb/doota/portal/v1/portal_pb";
 import { errorToMessage } from "@doota/pb/utils/errors";
 import { useClientsContext } from "@doota/ui-core/context/ClientContext";
+import { API_ENDPOINT_URL } from "@/services/grpc";
 // import { useIsExecutionRuntimeInPortal } from "@doota/ui-core/hooks/useExecutionRuntime";
 import { routes } from "@doota/ui-core/routing";
 import { Logo } from "@doota/ui-core/components/Logo";
@@ -26,6 +27,7 @@ export const LoginPanel: FC<Props> = ({
   onPasswordlessVerified,
   onPasswordlessVerifyError,
 }) => {
+  console.log('NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL);
   // const [optState, setOPTState] = useState<'start' | 'verify'>('start')
   // const [email, setEmail] = useState('')
   // const [code, setCode] = useState('')
@@ -171,6 +173,9 @@ export const LoginPanel: FC<Props> = ({
                   {emailError && (
                     <p className="text-sm text-destructive">{emailError}</p>
                   )}
+                  <p className="text-xs text-muted-foreground">
+                    API URL: <code>{API_ENDPOINT_URL}</code>
+                  </p>
                 </div>
                 <Button
                   type="submit"

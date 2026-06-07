@@ -30,3 +30,5 @@ backend/doota
 /frontend.log
 /redora.log
 /redora-spooler.log
+build/
+*.pid

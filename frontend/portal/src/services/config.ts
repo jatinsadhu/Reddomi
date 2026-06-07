@@ -3,11 +3,26 @@ import { portalClient } from './grpc'
 import { log } from './logger'
 import { create } from '@bufbuild/protobuf'
 
+const getCodespacesUrl = (port: string) => {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+  const host = window.location.host
+  if (host.endsWith('.app.github.dev')) {
+    const match = host.match(/^(.*)-(\d+)\.app\.github\.dev$/)
+    if (match) {
+      const prefix = match[1]
+      return `https://${prefix}-${port}.app.github.dev`
+    }
+  }
+  return undefined
+}
+
 // this is present on build (i.e. http://api.freightstream.ai)
-export const CONFIG_API_URI = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+export const CONFIG_API_URI = process.env.NEXT_PUBLIC_API_URL || getCodespacesUrl('8787') || 'http://localhost:8787'
 
 // this is present on build (i.e. http://app.freightstream.ai)
-export const CONFIG_PORTAL_URI = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+export const CONFIG_PORTAL_URI = process.env.NEXT_PUBLIC_APP_URL || getCodespacesUrl('3000') || 'http://localhost:3000'
 
 export class ConfigProvider {
   config: Config
