@@ -54,6 +54,12 @@ func (p *Portal) ConnectReddit(ctx context.Context, c *connect.Request[pbportal.
 		return err
 	}
 
+	p.logger.Info("connect reddit requested",
+		zap.String("organization_id", actor.OrganizationID),
+		zap.Bool("has_cookie_json", c.Msg.CookieJson != ""),
+		zap.String("alpha2_country_code", c.Msg.Alpha2CountryCode),
+	)
+
 	taskCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
@@ -63,6 +69,7 @@ func (p *Portal) ConnectReddit(ctx context.Context, c *connect.Request[pbportal.
 	}
 
 	if liveURL != "" {
+		p.logger.Info("connect reddit live url sent", zap.String("url", liveURL))
 		if err := stream.Send(&pbportal.ConnectRedditResponse{
 			Url: liveURL,
 		}); err != nil {

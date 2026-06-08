@@ -87,11 +87,12 @@ This repository contains all components required to run the Reddomi MVP.
 
 ## No Reddit API required for the MVP
 
-The fastest path to a working test is the cookie-based Reddit DM login flow:
+The fastest path to a working test is the cookie-based Reddit DM login flow.
 
-- Use the Cookie Integration screen in the portal to connect a Reddit account.
-- This path is designed to work without official Reddit API credentials for DM automation.
-- The API/OAuth path is optional and mainly useful for broader comment automation.
+- Use the Cookie Integration screen in the portal to connect a Reddit account with browser cookies.
+- This path works without official Reddit app credentials or API client secrets.
+- The implementation is in `backend/browser_automation/reddit.go`.
+- The API/OAuth path is optional and mainly useful for broader comment automation when app credentials are configured.
 
 For the launch checklist and readiness notes, see [docs/MVP_READY.md](docs/MVP_READY.md).
 
@@ -145,7 +146,7 @@ For the launch checklist and readiness notes, see [docs/MVP_READY.md](docs/MVP_R
 **Auth & APIs**
 
 - Auth0 (passwordless login)
-- Reddit OAuth APIs
+- Reddit OAuth APIs (optional; cookie-based flow is the preferred MVP path)
 - Resend (emails)
 - Browserless / Steel.dev (CDP automation)
 - DODO Payments (subscriptions)
@@ -342,6 +343,7 @@ If you need the exact file set for another AI or a new collaborator, point them 
 - `frontend/portal/src/components/pages/Login.tsx` — OTP login UI and flow
 - `backend/portal/handler_portal_passwordless_start.go` — passwordless start handler
 - `backend/portal/handler_portal_passwordless_verify.go` — passwordless verify handler
+- `backend/browser_automation/reddit.go` — cookie-based Reddit login and cookie extraction flow
 
 If a new AI is taking over the repo, tell it:
 
@@ -360,7 +362,7 @@ Integrations store external service credentials and configuration.
 | ------------------ | ------------------------------------------- |
 | **Reddit Cookies** | User-provided cookies for Reddit automation |
 | **Slack Webhook**  | Notifications and alerts                    |
-| **OAuth Tokens**   | Reddit access/refresh tokens                |
+| **OAuth Tokens**   | Optional Reddit access/refresh tokens for API-powered comment posting |
 
 **Manually insert an integration using tools. Example (CLI):**
 

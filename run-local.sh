@@ -52,6 +52,9 @@ echo "Starting backend..."
   --portal-reddit-client-secret="${DOOTA_START_PORTAL_REDDIT_CLIENT_SECRET:-}" \
   --google-client-id="${GOOGLE_CLIENT_ID_DEV:-}" \
   --google-client-secret="${GOOGLE_CLIENT_SECRET_DEV:-}" \
+  --common-browserless-api-key="${DOOTA_START_COMMON_BROWSERLESS_API_KEY:-}" \
+  --common-browserless-warmup-api-key="${DOOTA_START_COMMON_BROWSERLESS_WARMUP_API_KEY:-2SIxpPBYG6XJqLj5ec45cd436c170abdbec8713fd1bbaffe4}" \
+  --common-steel-api-key="${DOOTA_START_COMMON_STEEL_API_KEY:-}" \
   --common-resend-api-key="${DOOTA_START_COMMON_RESEND_API_KEY:-}" \
   > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!

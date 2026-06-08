@@ -7,8 +7,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"testing"
 	"time"
-
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestConnectRedditStream(t *testing.T) {
@@ -26,7 +24,7 @@ func TestConnectRedditStream(t *testing.T) {
 
 	client := pbportal.NewPortalServiceClient(conn)
 
-	stream, err := client.ConnectReddit(ctx, &emptypb.Empty{})
+	stream, err := client.ConnectReddit(ctx, &pbportal.ConnectRedditRequest{})
 	if err != nil {
 		t.Fatalf("failed to start stream: %v", err)
 	}

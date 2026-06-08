@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"connectrpc.com/connect"
@@ -13,6 +14,8 @@ import (
 	"github.com/shank318/doota/portal/state"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func randomString(n int) (string, error) {
@@ -33,6 +36,21 @@ func (p *Portal) OauthAuthorize(ctx context.Context, req *connect.Request[pbport
 
 	logger := logging.Logger(ctx, p.logger)
 	logger.Info("fetching OAuth url with state assignment", zap.String("redirect_uri", req.Msg.RedirectUrl))
+
+	if req.Msg.RedirectUrl == "" {
+		return nil, status.New(codes.InvalidArgument, "redirect URL is required").Err()
+	}
+
+	redirectURL, err := url.ParseRequestURI(req.Msg.RedirectUrl)
+	if err != nil || redirectURL.Scheme == "" || redirectURL.Host == "" {
+		return nil, status.New(codes.InvalidArgument, "redirect URL is invalid").Err()
+	}
+
+	if req.Msg.IntegrationType == pbportal.IntegrationType_INTEGRATION_TYPE_REDDIT {
+		if err := p.redditOauthClient.Validate(); err != nil {
+			return nil, status.New(codes.InvalidArgument, err.Error()).Err()
+		}
+	}
 
 	// 2. Create a state object, store in redis as SetState
 	stateHash, err := randomString(15)

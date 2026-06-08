@@ -73,7 +73,25 @@ func NewRedditOauthClient(logger *zap.Logger, alertNotifier alerts.AlertNotifier
 		alertNotifier: alertNotifier,
 		clientCache:   make(map[string]*Client),
 	}
+
+	if strings.TrimSpace(clientID) == "" || strings.TrimSpace(clientSecret) == "" || strings.TrimSpace(redirectURL) == "" {
+		logger.Warn("reddit OAuth is not fully configured; oauth-based reddit connections will fail until credentials are provided", zap.String("client_id", clientID), zap.String("redirect_url", redirectURL))
+	}
+
 	return oauthClient
+}
+
+func (c *OauthClient) Validate() error {
+	if strings.TrimSpace(c.clientID) == "" {
+		return errors.New("reddit OAuth client id is not configured")
+	}
+	if strings.TrimSpace(c.clientSecret) == "" {
+		return errors.New("reddit OAuth client secret is not configured")
+	}
+	if strings.TrimSpace(c.config.RedirectURL) == "" {
+		return errors.New("reddit OAuth redirect URL is not configured")
+	}
+	return nil
 }
 
 func (c *OauthClient) WithRotatingAccounts(

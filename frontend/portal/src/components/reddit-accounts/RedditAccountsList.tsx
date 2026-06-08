@@ -108,9 +108,95 @@ export function RedditAccountsList() {
         integrationType: integrationType,
         redirectUrl: buildAppUrl(routes.new.integrations),
       })
-      .then(oAuthAuthorizeResp => {
+      .then((oAuthAuthorizeResp) => {
         window.open(oAuthAuthorizeResp.authorizeUrl, '_self')
       })
+      .catch((err) => {
+        toast.error(getConnectError(err));
+      })
+  }
+
+  const startConnectReddit = async (countryCode: string) => {
+    const resolvedCountry = countryCode || cookieCountry || 'US'
+    setIsConnecting(true)
+    let popup: Window | null = null
+    const abortController = new AbortController()
+
+    try {
+      popup = window.open('', '_blank', 'width=600,height=800')
+      if (!popup) {
+        toast.error('Popup was blocked. Please allow popups in your browser.')
+        return
+      }
+
+      popup.document.write(`
+                  <html>
+                      <head><title>Connecting...</title></head>
+                      <body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
+                  <div>
+                      <p>Connecting to Reddit Chat...</p>
+                  </div>
+                  </body>
+                  </html>
+              `)
+      popup.document.close()
+
+      const response = portalClient.connectReddit({ alpha2CountryCode: resolvedCountry }, { signal: abortController.signal })
+      let streamClosed = false
+      let popupCheckInterval: number | null = null
+
+      popupCheckInterval = window.setInterval(() => {
+        if (popup && popup.closed && !streamClosed) {
+          setIsConnecting(false)
+          if (popupCheckInterval !== null) {
+            clearInterval(popupCheckInterval)
+          }
+          streamClosed = true
+          abortController.abort()
+        }
+      }, 500)
+
+      for await (const msg of response) {
+        if (msg.url) {
+          popup.location.href = msg.url
+        }
+      }
+
+      streamClosed = true
+      if (popupCheckInterval !== null) {
+        clearInterval(popupCheckInterval)
+      }
+
+      // Keep the popup open so the user can complete the browser automation login flow.
+      // The stream ends once the backend has finished waiting for cookies and finalizing login.
+      await handleSaveAutomation({ dm: { enabled: true } })
+      fetchAccounts()
+      toast.success('Reddit connected successfully')
+    } catch (err: any) {
+      if (popup && !popup.closed) {
+        popup.close()
+      }
+      if (popupCheckInterval !== null) {
+        clearInterval(popupCheckInterval)
+      }
+      setCookieCountry(resolvedCountry)
+      setShowCookieModal(true)
+    } finally {
+      if (popupCheckInterval !== null) {
+        clearInterval(popupCheckInterval)
+      }
+      setIsConnecting(false)
+    }
+  }
+
+  const handleConnectReddit = async (id: string) => {
+    const countryCode = accounts.find(acc => acc.id === id)?.countryCode || cookieCountry || 'US'
+    await startConnectReddit(countryCode)
+  }
+
+  const handleConnectNewReddit = async () => {
+    const countryCode = cookieCountry || 'US'
+    await startConnectReddit(countryCode)
   }
 
   const handleCountryChange = (id: string, countryCode: string) => {
@@ -230,83 +316,6 @@ export function RedditAccountsList() {
   const [isConnecting, setIsConnecting] = useState(false);
 
 
-  const handleConnectReddit = async (id: string) => {
-    const countryCode = accounts.find(acc => acc.id === id)?.countryCode;
-    if (!countryCode) {
-      toast.error("Please select a country before continuing");
-      return;
-    }
-
-
-    let popup: Window | null = null;
-    try {
-      setIsConnecting(true);
-      popup = window.open('', '_blank', "width=600,height=800");
-      if (!popup) {
-        toast.error('Popup was blocked. Please allow popups in your browser.');
-        return;
-      }
-      // Inject temporary loading UI
-      popup.document.write(`
-                  <html>
-                      <head><title>Connecting...</title></head>
-                      <body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
-                  <div>
-                      <p>Connecting to Reddit Chat...</p>
-                  </div>
-                  </body>
-                  </html>
-              `);
-      popup.document.close();
-      const abortController = new AbortController();
-      const response = portalClient.connectReddit({ alpha2CountryCode: countryCode }, { signal: abortController.signal });
-
-      let streamClosed = false;
-
-      // Set interval to check if popup closed manually
-      const popupCheckInterval = setInterval(() => {
-        if (popup && popup.closed && !streamClosed) {
-          setIsConnecting(false);
-          clearInterval(popupCheckInterval);
-          streamClosed = true;
-          abortController.abort(); // ⛔ cancels the stream
-        }
-      }, 500); // check every 500ms
-
-      for await (const msg of response) {
-        if (msg.url) {
-          // Open the Reddit login page in a popup
-          popup.location.href = msg.url; // Redirect once URL is available
-        }
-      }
-
-      // Stream finished normally
-      streamClosed = true;
-      clearInterval(popupCheckInterval);
-      // Stream has ended successfully
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-
-      await handleSaveAutomation({ dm: { enabled: true } });
-
-      // Refresh integrations to reflect the newly connected status
-      fetchAccounts()
-
-      toast.success("Reddit connected successfully");
-    } catch (err: any) {
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-      setCookieCountry(countryCode);
-      setShowCookieModal(true); // show modal
-      // toast.error(getConnectError(err));
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-
   const handleSaveAutomation = async (req: any) => {
     try {
       console.log("Updating autmation", req);
@@ -391,7 +400,7 @@ export function RedditAccountsList() {
             </CardDescription>
           </div>
           <Button
-            onClick={() => openOauthConsentScreen(IntegrationType.REDDIT)}
+            onClick={() => handleConnectNewReddit()}
             className="gap-1">
             <Plus className="h-4 w-4" />
             Add Reddit Account
@@ -405,7 +414,7 @@ export function RedditAccountsList() {
               No Reddit accounts connected yet. Add an account to start engaging with leads.
             </p>
             <Button
-              onClick={() => openOauthConsentScreen(IntegrationType.REDDIT)}
+              onClick={() => handleConnectNewReddit()}
               className="gap-1"
             >
               <Plus className="h-4 w-4" />
