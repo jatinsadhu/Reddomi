@@ -91,6 +91,18 @@ func (b browserLessClient) GetCDPInfo(ctx context.Context, input CDPInput) (*CDP
 			return nil, err
 		}
 
+		if len(result.Errors) > 0 {
+			errMessages := make([]string, len(result.Errors))
+			for i, e := range result.Errors {
+				errMessages[i] = e.Message
+			}
+			combined := strings.Join(errMessages, "; ")
+			if strings.Contains(combined, "Your plan does not support Live URLs") || strings.Contains(combined, "Reconnect time exceeds your current plans limits") {
+				return nil, errors.New("Browserless plan limitation: live sessions are not supported by the current Browserless key. Use a Steel provider or connect manually with cookies.")
+			}
+			return nil, errors.New("browserless GraphQL error: " + combined)
+		}
+
 		// Retry logic if proxy time is 0 and we're using proxy
 		//if useProxy && result.Data.Proxy.Time == 0 {
 		//	r.logger.Warn("proxy.time is 0, retrying", zap.Int("attempt", attempt+1))
@@ -136,4 +148,8 @@ type reconnectResponse struct {
 			LiveURL string `json:"liveURL"`
 		} `json:"live"`
 	} `json:"data"`
+	Errors []struct {
+		Message string   `json:"message"`
+		Path    []string `json:"path"`
+	} `json:"errors"`
 }

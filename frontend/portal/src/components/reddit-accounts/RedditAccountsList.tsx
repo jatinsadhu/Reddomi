@@ -55,7 +55,7 @@ export function RedditAccountsList() {
   const [loading, setLoading] = useState(true)
   const user = useAuthUser()
   const { setUser, setOrganization } = useAuth()
-  const [cookieCountry, setCookieCountry] = useState<string | null>(null);
+  const [cookieCountry, setCookieCountry] = useState<string>('US');
 
   const fetchAccounts = () => {
     setLoading(true);
@@ -121,6 +121,7 @@ export function RedditAccountsList() {
     setIsConnecting(true)
     let popup: Window | null = null
     const abortController = new AbortController()
+    let popupCheckInterval: number | null = null
 
     try {
       popup = window.open('', '_blank', 'width=600,height=800')
@@ -143,7 +144,6 @@ export function RedditAccountsList() {
 
       const response = portalClient.connectReddit({ alpha2CountryCode: resolvedCountry }, { signal: abortController.signal })
       let streamClosed = false
-      let popupCheckInterval: number | null = null
 
       popupCheckInterval = window.setInterval(() => {
         if (popup && popup.closed && !streamClosed) {
@@ -173,6 +173,7 @@ export function RedditAccountsList() {
       fetchAccounts()
       toast.success('Reddit connected successfully')
     } catch (err: any) {
+      toast.error(getConnectError(err));
       if (popup && !popup.closed) {
         popup.close()
       }
@@ -544,13 +545,34 @@ export function RedditAccountsList() {
                         </Card>
 
                         <div className="space-y-2">
-                          <Textarea
-                            rows={5}
-                            placeholder="Paste your Reddit cookies JSON here..."
-                            value={cookieInput}
-                            onChange={(e) => setCookieInput(e.target.value)}
-                            className={cookieError ? "border-red-500" : ""}
-                          />
+                          <div className="space-y-3">
+                            <div className="flex flex-col gap-2">
+                              <label className="text-xs font-medium text-foreground">Country</label>
+                              <Select
+                                value={cookieCountry}
+                                onValueChange={(value) => setCookieCountry(value)}
+                              >
+                                <SelectTrigger className="w-full h-9 text-xs">
+                                  <SelectValue placeholder="Select a country" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {countryEntries.map(([code, name]) => (
+                                    <SelectItem key={code} value={code} className="text-xs">
+                                      {name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <Textarea
+                              rows={5}
+                              placeholder="Paste your Reddit cookies JSON here..."
+                              value={cookieInput}
+                              onChange={(e) => setCookieInput(e.target.value)}
+                              className={cookieError ? "border-red-500" : ""}
+                            />
+                          </div>
                           {cookieError ? (
                             <p className="text-xs text-red-600">{cookieError}</p>
                           ) : (
@@ -571,10 +593,6 @@ export function RedditAccountsList() {
                           <Button
                             onClick={async () => {
                               try {
-                                if (!cookieCountry) {
-                                  setCookieError("Please select a country before continuing");
-                                  return;
-                                }
                                 setIsSubmittingCookie(true)
                                 setCookieError("")
 
@@ -588,7 +606,7 @@ export function RedditAccountsList() {
 
                                 const response = portalClient.connectReddit({
                                   cookieJson: cookieInput,
-                                  alpha2CountryCode: cookieCountry,
+                                  alpha2CountryCode: cookieCountry || 'US',
                                 })
                                 for await (const msg of response) { }
 

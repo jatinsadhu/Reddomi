@@ -56,7 +56,9 @@ const AuthGuard = ({ children, fallback }: AuthGuardProps) => {
 
       if (user) {
         const data = user.projects?.[0]
-        const isOnboardingDone = user.isOnboardingDone
+        const hasKeywords = Array.isArray(data?.keywords) && data.keywords.length > 0
+        const hasSources = Array.isArray(data?.sources) && data.sources.length > 0
+        const isOnboardingDone = user.isOnboardingDone || (data != null && hasKeywords && hasSources)
 
         const nextStep = calculateNextStep(data)
         dispatch(setIsOnboardingDone(isOnboardingDone))

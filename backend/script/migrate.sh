@@ -12,6 +12,9 @@ main() {
     PG_DSN=`printf "${PG_DSN}" | sed 's|postgresql://|postgres://|'`
   fi
 
+  # golang-migrate does not support non-standard DSN params such as encryptionKey
+  PG_DSN=`printf "%s" "$PG_DSN" | sed -E 's/([&?])encryptionKey=[^&]*(&?)/\1/; s/[?&]$//'`
+
   pushd "$ROOT" &> /dev/null
     command="go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest -database="${PG_DSN}" -path "$MIGRATIONS""
 
@@ -55,26 +58,39 @@ main() {
       fi
 
       target=`ls "$MIGRATIONS" | grep -E "[0-9]{6}_" | cut -d "_" -f 1 | sort -n | tail -n 1 | sed -e 's/^0*//'`
+      force=false
       if [[ $# -gt 1 ]]; then
-        target=$(($2))
+        if [[ "$2" == "-y" || "$2" == "--yes" ]]; then
+          force=true
+        else
+          target=$(($2))
+        fi
+      fi
+      if [[ $# -gt 2 && ("$2" == "-y" || "$2" == "--yes") ]]; then
+        target=$(($3))
       fi
 
       offset=$(($target - $actual))
-      if [[ $offset -le 0 ]]; then
-        echo "The actual version is $actual_raw but your requested to go up to $target which is before or equal the actual version, this is invalid."
+      if [[ $offset -lt 0 ]]; then
+        echo "The actual version is $actual_raw but your requested to go up to $target which is before the actual version, this is invalid."
         if [[ $actual_raw =~ .*\(dirty\) ]]; then
           echo "You are in a dirty state, if this happened due to wrong migration, you can force the version with 'force $(($target - 1))'"
         fi
 
         exit 1
+      elif [[ $offset -eq 0 ]]; then
+        echo "Database is already at the latest migration version $actual."
+        exit 0
       fi
 
-      printf "Are you sure you want to go up from $actual_raw to $target? [y/N] "
-      read -r answer
-      if [[ $answer != "y" ]]; then
-        echo "Aborting"
-        # Exit with 1 so that script calling us know we aborted
-        exit 1
+      if [[ "$force" != true ]]; then
+        printf "Are you sure you want to go up from $actual_raw to $target? [y/N] "
+        read -r answer
+        if [[ $answer != "y" ]]; then
+          echo "Aborting"
+          # Exit with 1 so that script calling us know we aborted
+          exit 1
+        fi
       fi
 
       exec $command up $offset

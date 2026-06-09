@@ -177,10 +177,56 @@ Copy the environment file and configure:
 
 ```bash
 cp .envrc.example .envrc
+```
+
+Edit `.envrc` and fill in any required API keys and secrets.
+
+Important: for Reddit account connect, the portal now prefers Steel.dev browser automation. Set `DOOTA_START_COMMON_STEEL_API_KEY` in `.envrc` and provide a valid Steel API key.
+
+If you also set `DOOTA_START_COMMON_BROWSERLESS_API_KEY`, Browserless will be configured as a fallback only. Browserless hobby/free plans may reject Live URL sessions, so Steel is required for the Reddit connect flow.
+
+If you have `direnv` installed, run:
+
+```bash
 direnv allow
 ```
 
+If you do not have `direnv` installed, load the file directly:
+
+```bash
+source .envrc
+```
+
 Replace placeholders (`<value>`) with your actual secrets and keys.
+
+---
+
+### Quick Start
+
+If you are starting from a fresh machine, use the following commands:
+
+```bash
+git clone git@github.com:rekhanileshsharma-boop/Reddomi.git
+cd Reddomi
+cp .envrc.example .envrc
+# edit .envrc and fill in required values
+# if direnv is installed
+# direnv allow
+# otherwise
+source .envrc
+
+docker compose up -d postgres redis
+
+cd backend
+go test ./...
+cd ../frontend
+pnpm install
+cd ../
+
+./run-local.sh
+```
+
+This will start the backend on `http://127.0.0.1:8787` and the frontend on `http://127.0.0.1:3000`.
 
 ---
 

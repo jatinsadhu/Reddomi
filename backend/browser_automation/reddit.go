@@ -595,8 +595,9 @@ func (r RedditBrowserAutomation) DailyWarmup(ctx context.Context, params DailyWa
 
 		// Go back to feed
 		logger.Info("Returning to home feed", zap.Int("visit", i+1))
-		if err, _ := page.GoBack(); err != nil {
-			return fmt.Errorf("failed to navigate back: %w", err)
+		_, goBackErr := page.GoBack()
+		if goBackErr != nil {
+			return fmt.Errorf("failed to navigate back: %w", goBackErr)
 		}
 
 		// Wait for feed to reappear

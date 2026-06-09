@@ -38,6 +38,9 @@ echo "Building backend..."
 cd "$ROOT/backend"
 go build -o "$ROOT/build/doota" ./cmd/doota
 
+echo "Applying database migrations..."
+"$ROOT/backend/script/migrate.sh" up --yes
+
 BACKEND_LOG="$ROOT/backend.log"
 FRONTEND_LOG="$ROOT/frontend.log"
 

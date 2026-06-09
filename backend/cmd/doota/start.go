@@ -215,12 +215,29 @@ func redoraSpoolerApp(cmd *cobra.Command, isAppReady func() bool) (App, error) {
 		return nil, fmt.Errorf("unable to create debug store: %w", err)
 	}
 
-	browserLessClient := browser_automation.NewBrowserLessBrowser(
-		sflags.MustGetString(cmd, "common-browserless-api-key"),
-		sflags.MustGetString(cmd, "common-browserless-warmup-api-key"),
-		logger)
-	//steelBrowserClient := browser_automation.NewSteelBrowser(sflags.MustGetString(cmd, "common-steel-api-key"), logger)
-	redditBrowserAutomation := browser_automation.NewRedditBrowserAutomation(browserLessClient, logger, debugStore)
+	browserAutomationProvider := browser_automation.BrowserAutomationProvider(nil)
+	steelAPIKey := sflags.MustGetString(cmd, "common-steel-api-key")
+	browserlessAPIKey := sflags.MustGetString(cmd, "common-browserless-api-key")
+	browserlessWarmupAPIKey := sflags.MustGetString(cmd, "common-browserless-warmup-api-key")
+
+	if steelAPIKey != "" && browserlessAPIKey != "" {
+		// Prefer Steel but keep Browserless as a fallback
+		steel := browser_automation.NewSteelBrowser(steelAPIKey, logger)
+		browserless := browser_automation.NewBrowserLessBrowser(browserlessAPIKey, browserlessWarmupAPIKey, logger)
+		browserAutomationProvider = browser_automation.NewFallbackBrowserAutomation(steel, browserless, logger)
+		logger.Info("using Steel.dev as primary browser automation provider with Browserless fallback")
+	} else if steelAPIKey != "" {
+		browserAutomationProvider = browser_automation.NewSteelBrowser(steelAPIKey, logger)
+		logger.Info("using Steel.dev browser automation provider")
+	} else if browserlessAPIKey != "" {
+		browserAutomationProvider = browser_automation.NewBrowserLessBrowser(browserlessAPIKey, browserlessWarmupAPIKey, logger)
+		logger.Info("using Browserless browser automation provider")
+	} else {
+		browserAutomationProvider = browser_automation.NewBrowserLessBrowser(browserlessAPIKey, browserlessWarmupAPIKey, logger)
+		logger.Warn("no browser automation API key provided; browser automation requests will fail")
+	}
+
+	redditBrowserAutomation := browser_automation.NewRedditBrowserAutomation(browserAutomationProvider, logger, debugStore)
 	interactionService := interactions.NewRedditInteractions(deps.DataStore, alertNotifier, redditBrowserAutomation, redditOauthClient, logger)
 
 	interactionsSpooler := interactions.NewSpooler(
@@ -394,12 +411,28 @@ func portalApp(cmd *cobra.Command, isAppReady func() bool) (App, error) {
 		return nil, fmt.Errorf("unable to create debug store: %w", err)
 	}
 
-	browserLessClient := browser_automation.NewBrowserLessBrowser(
-		sflags.MustGetString(cmd, "common-browserless-api-key"),
-		sflags.MustGetString(cmd, "common-browserless-warmup-api-key"),
-		logger)
-	//steelBrowserClient := browser_automation.NewSteelBrowser(sflags.MustGetString(cmd, "common-steel-api-key"), logger)
-	redditBrowserAutomation := browser_automation.NewRedditBrowserAutomation(browserLessClient, logger, debugStore)
+	browserAutomationProvider := browser_automation.BrowserAutomationProvider(nil)
+	steelAPIKey := sflags.MustGetString(cmd, "common-steel-api-key")
+	browserlessAPIKey := sflags.MustGetString(cmd, "common-browserless-api-key")
+	browserlessWarmupAPIKey := sflags.MustGetString(cmd, "common-browserless-warmup-api-key")
+
+	if steelAPIKey != "" && browserlessAPIKey != "" {
+		steel := browser_automation.NewSteelBrowser(steelAPIKey, logger)
+		browserless := browser_automation.NewBrowserLessBrowser(browserlessAPIKey, browserlessWarmupAPIKey, logger)
+		browserAutomationProvider = browser_automation.NewFallbackBrowserAutomation(steel, browserless, logger)
+		logger.Info("using Steel.dev as primary browser automation provider with Browserless fallback")
+	} else if steelAPIKey != "" {
+		browserAutomationProvider = browser_automation.NewSteelBrowser(steelAPIKey, logger)
+		logger.Info("using Steel.dev browser automation provider")
+	} else if browserlessAPIKey != "" {
+		browserAutomationProvider = browser_automation.NewBrowserLessBrowser(browserlessAPIKey, browserlessWarmupAPIKey, logger)
+		logger.Info("using Browserless browser automation provider")
+	} else {
+		browserAutomationProvider = browser_automation.NewBrowserLessBrowser(browserlessAPIKey, browserlessWarmupAPIKey, logger)
+		logger.Warn("no browser automation API key provided; browser automation requests will fail")
+	}
+
+	redditBrowserAutomation := browser_automation.NewRedditBrowserAutomation(browserAutomationProvider, logger, debugStore)
 
 	interactionService := interactions.NewRedditInteractions(deps.DataStore, alertNotifier, redditBrowserAutomation, redditOauthClient, logger)
 

@@ -57,8 +57,6 @@ func (r steelBrowserClient) GetCDPInfo(ctx context.Context, input CDPInput) (*CD
 		r.logger.Info("creating steel browser session", zap.Int("attempt", attempt+1))
 
 		payload := createSession{
-			SolveCaptcha: true,
-			//UseProxy:     input.UseProxy,
 			Timeout: 3 * 60 * 1000, // 3 minutes in ms
 		}
 		payload.UseProxy.GeoLocation.Country = input.GetCountryCode()
