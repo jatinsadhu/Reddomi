@@ -398,6 +398,24 @@ If a new AI is taking over the repo, tell it:
 
 ---
 
+## Syncing Changes
+
+- **Commit local changes:**
+
+```bash
+git add README.md
+git commit -m "docs: clarify Steel requirement and add sync instructions" || echo "no changes to commit"
+```
+
+- **Push to GitHub:**
+
+```bash
+git push origin main
+```
+
+Ensure you have push permissions and your Git credentials set up (SSH key or `gh auth login`).
+
+
 ## �🔌 Integrations
 
 Integrations store external service credentials and configuration.
