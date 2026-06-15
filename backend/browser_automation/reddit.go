@@ -377,6 +377,67 @@ func (r RedditBrowserAutomation) storeScreenshot(stage, id string, page playwrig
 	}
 }
 
+func (r RedditBrowserAutomation) dumpDiagnosticsOnBlock(ctx context.Context, page playwright.Page, pageContext playwright.BrowserContext, sessionID string, blockReason string) {
+	// Capture full page HTML
+	pageHTML, _ := page.Content()
+	if pageHTML != "" {
+		filePath := fmt.Sprintf("block_diagnostics_%s_page.html", sessionID)
+		buf := bytes.NewBufferString(pageHTML)
+		if err := r.debugFileStore.WriteObject(ctx, filePath, buf); err != nil {
+			r.logger.Error("failed to save page HTML", zap.Error(err), zap.String("path", filePath))
+		} else {
+			r.logger.Info("saved page HTML on block", zap.String("path", filePath))
+		}
+	}
+
+	// Capture all cookies at time of block
+	cookies, _ := pageContext.Cookies()
+	cookieData := map[string]interface{}{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"url":       page.URL(),
+		"block_reason": blockReason,
+		"cookie_count": len(cookies),
+		"cookies": cookies,
+	}
+	cookieJSON, _ := json.MarshalIndent(cookieData, "", "  ")
+	filePath := fmt.Sprintf("block_diagnostics_%s_cookies.json", sessionID)
+	buf := bytes.NewBuffer(cookieJSON)
+	if err := r.debugFileStore.WriteObject(ctx, filePath, buf); err != nil {
+		r.logger.Error("failed to save cookies", zap.Error(err), zap.String("path", filePath))
+	} else {
+		r.logger.Info("saved cookies on block", zap.String("path", filePath), zap.Int("cookie_count", len(cookies)))
+	}
+
+	// Capture screenshot
+	screenshotPath := fmt.Sprintf("block_diagnostics_%s_screenshot.png", sessionID)
+	byteData, _ := page.Screenshot(playwright.PageScreenshotOptions{FullPage: playwright.Bool(true)})
+	if byteData != nil {
+		screenshotBuf := bytes.NewBuffer(byteData)
+		if err := r.debugFileStore.WriteObject(ctx, screenshotPath, screenshotBuf); err != nil {
+			r.logger.Error("failed to save screenshot", zap.Error(err), zap.String("path", screenshotPath))
+		} else {
+			r.logger.Info("saved screenshot on block", zap.String("path", screenshotPath))
+		}
+	}
+
+	// Log comprehensive diagnostic info
+	r.logger.Error("REDDIT BLOCK DETECTED - DIAGNOSTIC DUMP",
+		zap.String("block_reason", blockReason),
+		zap.String("session_id", sessionID),
+		zap.String("current_url", page.URL()),
+		zap.Int("cookie_count", len(cookies)),
+		zap.String("timestamp", time.Now().Format(time.RFC3339)))
+
+	// Log first 3000 chars of page HTML for debugging
+	if pageHTML != "" {
+		if len(pageHTML) > 3000 {
+			r.logger.Error("page content (truncated 3000 chars)", zap.String("html", pageHTML[:3000]))
+		} else {
+			r.logger.Error("page content", zap.String("html", pageHTML))
+		}
+	}
+}
+
 func (r RedditBrowserAutomation) WaitAndGetCookies(ctx context.Context, cdp *CDPInfo) (*models.RedditDMLoginConfig, error) {
 	defer func() {
 		if cdp.ReleaseSession != nil {
@@ -405,33 +466,84 @@ func (r RedditBrowserAutomation) WaitAndGetCookies(ctx context.Context, cdp *CDP
 	pageContext := browser.Contexts()[0]
 	page := pageContext.Pages()[0]
 
+	// Log browser info for diagnostics
+	userAgent, _ := page.Evaluate("navigator.userAgent")
+	r.logger.Info("browser session started",
+		zap.String("session_id", cdp.SessionID),
+		zap.String("user_agent", fmt.Sprintf("%v", userAgent)),
+		zap.String("initial_url", page.URL()))
+
 	// Navigate to Reddit login page
-	r.logger.Info("navigating to reddit login page")
+	r.logger.Info("navigating to reddit login page", zap.String("session_id", cdp.SessionID))
 	if _, err := page.Goto(loginURL, playwright.PageGotoOptions{Timeout: playwright.Float(10000)}); err != nil {
+		r.logger.Warn("navigation to login page failed", zap.Error(err), zap.String("session_id", cdp.SessionID))
 		return nil, fmt.Errorf("navigation to login page failed: %w", err)
 	}
 
+	r.logger.Info("successfully navigated to login URL",
+		zap.String("session_id", cdp.SessionID),
+		zap.String("page_url", page.URL()))
+
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+
+	pollCount := 0
+	blockReason := ""
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("login timed out or cancelled: %w", ctx.Err())
 		case <-ticker.C:
+			pollCount++
 			currentURL := page.URL()
-			
+
 			// Check for security/error messages
 			errorContent, _ := page.TextContent("body")
-			if strings.Contains(errorContent, "blocked by network security") || 
-			   strings.Contains(errorContent, "Please try to login") ||
-			   strings.Contains(errorContent, "something went wrong") {
-				return nil, fmt.Errorf("reddit security block detected: %s", errorContent)
+			if errorContent == "" {
+				errorContent = "(empty page content)"
 			}
-			
+
+			// Detect various block/error conditions
+			if strings.Contains(errorContent, "blocked by network security") {
+				blockReason = "reddit_network_security_block"
+				r.logger.Error("BLOCK DETECTED: network security",
+					zap.String("session_id", cdp.SessionID),
+					zap.Int("poll_count", pollCount),
+					zap.String("url", currentURL))
+				r.dumpDiagnosticsOnBlock(ctx, page, pageContext, cdp.SessionID, blockReason)
+				return nil, fmt.Errorf("reddit security block detected: your request has been blocked by network security")
+			}
+
+			if strings.Contains(errorContent, "Please try to login") && pollCount > 2 {
+				blockReason = "reddit_login_block"
+				r.logger.Error("BLOCK DETECTED: login block",
+					zap.String("session_id", cdp.SessionID),
+					zap.Int("poll_count", pollCount),
+					zap.String("url", currentURL))
+				r.dumpDiagnosticsOnBlock(ctx, page, pageContext, cdp.SessionID, blockReason)
+				return nil, fmt.Errorf("reddit login block detected")
+			}
+
+			if strings.Contains(errorContent, "something went wrong") {
+				blockReason = "reddit_generic_error"
+				r.logger.Error("BLOCK DETECTED: generic error",
+					zap.String("session_id", cdp.SessionID),
+					zap.Int("poll_count", pollCount),
+					zap.String("url", currentURL))
+				r.dumpDiagnosticsOnBlock(ctx, page, pageContext, cdp.SessionID, blockReason)
+				return nil, fmt.Errorf("reddit error: something went wrong")
+			}
+
 			if alert, _ := page.QuerySelector("faceplate-banner[appearance='error']"); alert != nil {
 				msg, _ := alert.GetAttribute("msg")
 				if msg != "" {
+					blockReason = fmt.Sprintf("reddit_banner_error: %s", msg)
+					r.logger.Error("BLOCK DETECTED: error banner",
+						zap.String("session_id", cdp.SessionID),
+						zap.Int("poll_count", pollCount),
+						zap.String("message", msg))
+					r.dumpDiagnosticsOnBlock(ctx, page, pageContext, cdp.SessionID, blockReason)
 					return nil, errors.New(msg)
 				}
 			}
@@ -460,12 +572,23 @@ func (r RedditBrowserAutomation) WaitAndGetCookies(ctx context.Context, cdp *CDP
 					return nil, errors.New("no cookies found")
 				}
 
+				r.logger.Info("login successful, returning cookies",
+					zap.String("session_id", cdp.SessionID),
+					zap.String("username", displayName),
+					zap.Int("cookie_count", len(cookies)),
+					zap.Int("poll_count", pollCount))
+
 				loginConfig := &models.RedditDMLoginConfig{
 					Username: displayName,
 					Cookies:  string(marshal),
 				}
 				return loginConfig, nil
 			}
+
+			r.logger.Debug("polling for login",
+				zap.String("session_id", cdp.SessionID),
+				zap.Int("poll_count", pollCount),
+				zap.String("url", currentURL))
 		}
 	}
 }
