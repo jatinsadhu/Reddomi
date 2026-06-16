@@ -83,13 +83,6 @@ export function DashboardHeader() {
                     Profile
                   </Link>
                 </DropdownMenuItem> */}
-                <DropdownMenuItem asChild>
-                  <Link href={routes.new.integrations} className="cursor-pointer">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Global Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout

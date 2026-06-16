@@ -81,12 +81,6 @@ export default function Dashboard() {
           buttonText="Reactivate now →"
           buttonHref="/settings/automation"
         />
-      ) : (!isConnected && !isLoadingRedditIntegrationStatus) ? (
-        <AnnouncementBanner
-          message="⚠️ Connect your Reddit account to get real-time alerts and auto-reply to trending posts."
-          buttonText="Connect now →"
-          buttonHref="/settings/integrations"
-        />
       ) : null}
 
       <div className="flex-1 overflow-auto">

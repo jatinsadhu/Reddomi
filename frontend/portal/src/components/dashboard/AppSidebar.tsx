@@ -27,10 +27,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-    useSidebar,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -41,8 +38,6 @@ import { Image } from "@doota/ui-core/atoms/Image";
 import { getFreePlanDateStatus } from "@/utils/format";
 import { Button } from "../ui/button";
 import { SubscriptionPlanID } from "@doota/pb/doota/core/v1/core_pb";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
 
 export function AppSidebar() {
 
@@ -51,8 +46,6 @@ export function AppSidebar() {
   const location = usePathname();
   const { getPlanDetails, currentOrganization } = useAuth();
   const { planId } = getPlanDetails();
-  // const [open, setOpen] = useState(true);
-  const [postCreationOpen, setPostCreationOpen] = useState(true);
 
   const isActive = (path: string) => {
     return location.startsWith(path);
@@ -91,21 +84,6 @@ export function AppSidebar() {
     },
   ];
 
-  const postCreationItems = [
-    {
-      title: "Create Post",
-      path: routes.new.postCreationHub.create,
-      icon: Plus,
-      active: isActive(routes.new.postCreationHub.create),
-    },
-    {
-      title: "Posts",
-      path: routes.new.postCreationHub.posts,
-      icon: List,
-      active: isActive(routes.new.postCreationHub.posts),
-    },
-  ];
-
   const workspaceSettingsItems = [
     {
       title: "Edit Product",
@@ -113,30 +91,6 @@ export function AppSidebar() {
       icon: Edit,
       active: isActive(routes.new.edit_product),
     },
-    {
-      title: "Integrations",
-      path: routes.new.integrations,
-      icon: Workflow,
-      active: isActive(routes.new.integrations),
-    },
-    {
-      title: "Automation Settings",
-      path: routes.new.automation,
-      icon: Settings,
-      active: isActive(routes.new.automation),
-    },
-    // {
-    //   title: "Reddit Accounts",
-    //   path: "/settings/reddit-accounts",
-    //   icon: BarChart2,
-    //   active: isActive("/settings/reddit-accounts"),
-    // },
-    // {
-    //   title: "Team Members",
-    //   path: "/settings/team",
-    //   icon: Users,
-    //   active: isActive("/settings/team"),
-    // },
     {
       title: "Billing Plan",
       path: routes.new.billing,
@@ -198,36 +152,6 @@ export function AppSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
-
-          <Collapsible open={postCreationOpen} onOpenChange={setPostCreationOpen}>
-            <SidebarMenuItem className="list-none">
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton isActive={
-                    isActive(routes.new.postCreationHub.create) ||
-                    isActive(routes.new.postCreationHub.posts)  ||
-                    isActive(routes.new.postCreationHub.editor)
-                }>
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  <span>Post Creation Hub</span>
-                  <ChevronRight className={`h-4 w-4 ml-auto transition-transform ${postCreationOpen ? 'rotate-90' : ''}`} />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub className="list-none">
-                  {postCreationItems.map((item) => (
-                      <SidebarMenuSubItem key={item.path} className="list-none">
-                        <SidebarMenuSubButton asChild isActive={item.active}>
-                          <Link href={item.path} className="flex items-center">
-                            <item.icon className="h-4 w-4 mr-2" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
         </SidebarGroup>
 
         <SidebarGroup>
