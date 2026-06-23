@@ -76,6 +76,22 @@ The backend process environment included:
 - Database connection successful from backend
 - Docker PostgreSQL container running with expected tables
 
+### Verified System Status (End-to-End)
+
+- ❌ Autonomous Reddit Lead Discovery → **NOT VERIFIED (only DB-seeded test data so far)**
+- ⚠️ Notifications system → **NOT VERIFIED**
+- ⚠️ Analytics with real activity data → **NOT VERIFIED**
+- ⚠️ CSV export → **NOT VERIFIED**
+
+### Current Verified Components
+
+- API layer working (ConnectRPC)
+- Auth working (mock KMS JWT)
+- DB schema + migrations correct
+- Lead CRUD working
+- Keyword + tracker creation working
+- Spooler running (but not verified producing real Reddit ingestion)
+
 ## Exact code changes
 
 ### Modified files
