@@ -75,10 +75,17 @@ The backend process environment included:
 - Frontend port `3000` is listening and returns HTML on `/`
 - Database connection successful from backend
 - Docker PostgreSQL container running with expected tables
+- Redis service available and healthy in current stack
+
+### Live verification findings
+- `redora-spooler` starts successfully and loads keyword trackers from the database
+- No active `REDDIT` integration records exist in the DB, so authenticated Reddit access is unavailable
+- External Reddit API access is blocked in the environment, causing `403` errors on Reddit endpoints
+- Real lead ingestion, notification dispatch, analytics, and CSV export remain unverified because there is no live discovered lead data
 
 ### Verified System Status (End-to-End)
 
-- ❌ Autonomous Reddit Lead Discovery → **NOT VERIFIED (only DB-seeded test data so far)**
+- ❌ Autonomous Reddit Lead Discovery → **NOT VERIFIED (missing active Reddit integration and external Reddit access blocked)**
 - ⚠️ Notifications system → **NOT VERIFIED**
 - ⚠️ Analytics with real activity data → **NOT VERIFIED**
 - ⚠️ CSV export → **NOT VERIFIED**
